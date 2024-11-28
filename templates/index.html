@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OllamaVoice - AI Video Creator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .message-container {
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: 20%;
+        }
+        .ai-message {
+            background-color: #f5f5f5;
+            margin-right: 20%;
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input[type="text"], textarea {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: inherit;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #1976d2;
+        }
+        #start-app {
+            display: block;
+            width: 200px;
+            margin: 20px auto;
+            font-size: 1.2em;
+        }
+        .chat-interface {
+            display: none;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .tab.active {
+            background-color: #2196f3;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .video-preview-container {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .video-preview {
+            max-width: 100%;
+            margin-bottom: 15px;
+        }
+        .video-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .video-actions button {
+            min-width: 120px;
+        }
+        .script-preview {
+            margin-top: 15px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .video-options {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .option-btn {
+            padding: 8px 16px;
+            margin: 0 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #f8f9fa;
+            cursor: pointer;
+        }
+
+        .option-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #0056b3;
+        }
+
+        .video-form {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .error-message {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+        .success-message {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <button id="start-app">Start Application</button>
+
+    <div class="container" style="display: none;" id="main-container">
+        <h1>OllamaVoice - AI Video Creator</h1>
+        
+        <div id="system-status" class="error-message"></div>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="chat">AI Chat</div>
+            <div class="tab" data-tab="video">Create Video</div>
+            <div class="tab" data-tab="diagnostics">System Status</div>
+        </div>
+
+        <div class="tab-content active" id="chat-tab">
+            <div class="message-container" id="messages"></div>
+            <div class="input-container">
+                <input type="text" id="messageInput" placeholder="Type your message...">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+
+        <div class="tab-content" id="video-tab">
+            <div class="video-options">
+                <button class="option-btn active" onclick="showVideoForm('manual')">Manual Script</button>
+                <button class="option-btn" onclick="showVideoForm('research')">AI Research</button>
+            </div>
+            
+            <div id="manual-video-form" class="video-form">
+                <h3>Create Video with Manual Script</h3>
+                <form id="video-form" onsubmit="createVideo(event)">
+                    <div class="form-group">
+                        <label for="videoTitle">Video Title</label>
+                        <input type="text" id="videoTitle" required placeholder="Enter video title">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="videoScript">Script/Prompt</label>
+                        <textarea id="videoScript" required placeholder="Enter your video script or prompt for AI to generate content"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="backgroundVideo">Background Video (optional)</label>
+                        <input type="file" id="backgroundVideo" accept="video/*">
+                    </div>
+                    
+                    <button type="submit">Generate Video</button>
+                </form>
+
+                <div id="progress">
+                    <p id="progress-text">Creating your video... Please wait.</p>
+                </div>
+
+                <div id="video-output"></div>
+            </div>
+            
+            <div id="research-video-form" class="video-form" style="display: none;">
+                <h3>Create AI-Researched Video</h3>
+                <form id="research-video-form" onsubmit="handleResearchVideo(event)">
+                    <div class="form-group">
+                        <label for="research-topic">Research Topic:</label>
+                        <input type="text" id="research-topic" name="topic" required 
+                               placeholder="Enter a topic to research and create a video about">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Generate Video</button>
+                </form>
+                <div id="research-progress" style="display: none;">
+                    <p>Researching topic and generating video...</p>
+                    <div class="progress-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-content" id="diagnostics-tab">
+            <h2>System Diagnostics</h2>
+            <div id="test-status" class="status-message"></div>
+            <div id="diagnostic-results">
+                <button id="test-system" onclick="runDiagnostics()">Test System</button>
+                <div id="audio-test-results" style="margin-top: 20px;">
+                    <h3>TTS Test Results:</h3>
+                    <div id="json-audio-player" style="margin: 10px 0;">
+                        <h4>JSON Response Test:</h4>
+                        <audio id="json-audio" controls style="display: none;"></audio>
+                        <div id="json-status"></div>
+                    </div>
+                    <div id="raw-audio-player" style="margin: 10px 0;">
+                        <h4>Raw Audio Test:</h4>
+                        <audio id="raw-audio" controls style="display: none;"></audio>
+                        <div id="raw-status"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize tab functionality
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const tabId = tab.dataset.tab;
+                    
+                    // Update active tab
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    // Update active content
+                    document.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+
+            // Initialize start button
+            document.getElementById('start-app').addEventListener('click', function() {
+                this.style.display = 'none';
+                document.getElementById('main-container').style.display = 'block';
+            });
+
+            // Initialize form submissions
+            document.getElementById('video-form').addEventListener('submit', createVideo);
+            document.getElementById('research-video-form').addEventListener('submit', handleResearchVideo);
+
+            // Initialize video form type buttons
+            document.querySelectorAll('.option-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const type = btn.textContent.toLowerCase().includes('manual') ? 'manual' : 'research';
+                    showVideoForm(type);
+                });
+            });
+        });
+
+        function showVideoForm(type) {
+            // Reset the video form if it exists
+            const videoForm = document.getElementById('video-form');
+            if (videoForm) {
+                videoForm.reset();
+            }
+            
+            // Hide all forms first
+            document.getElementById('manual-video-form').style.display = 'none';
+            document.getElementById('research-video-form').style.display = 'none';
+            
+            // Show selected form
+            if (type === 'manual') {
+                document.getElementById('manual-video-form').style.display = 'block';
+                document.querySelectorAll('.option-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.textContent.toLowerCase().includes('manual'));
+                });
+            } else {
+                document.getElementById('research-video-form').style.display = 'block';
+                document.querySelectorAll('.option-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.textContent.toLowerCase().includes('research'));
+                });
+            }
+        }
+
+        function showVideoPreview(data) {
+            const outputDiv = document.getElementById('video-output');
+            outputDiv.innerHTML = `
+                <div class="video-preview-container">
+                    <video class="video-preview" controls>
+                        <source src="${data.video_path}" type="video/mp4">
+                        Your browser does not support the video tag.
+                    </video>
+                    <div class="video-actions">
+                        <button onclick="window.open('${data.video_path}', '_blank')">Download Video</button>
+                        <button onclick="copyVideoLink('${data.video_path}')">Copy Link</button>
+                    </div>
+                    <div class="script-preview">
+                        <h4>Generated Script:</h4>
+                        <p>${data.script}</p>
+                    </div>
+                </div>`;
+        }
+
+        function copyVideoLink(videoPath) {
+            const fullUrl = window.location.origin + videoPath;
+            navigator.clipboard.writeText(fullUrl).then(() => {
+                alert('Video link copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy link:', err);
+                alert('Failed to copy link to clipboard');
+            });
+        }
+
+        async function createVideo(event) {
+            event.preventDefault();
+            
+            const form = document.getElementById('video-form');
+            const submitButton = form.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.innerHTML;
+            
+            submitButton.disabled = true;
+            submitButton.innerHTML = 'Generating... <div class="loading"></div>';
+            
+            try {
+                const formData = new FormData();
+                formData.append('title', document.getElementById('videoTitle').value);
+                formData.append('script', document.getElementById('videoScript').value);
+                
+                const backgroundVideo = document.getElementById('backgroundVideo').files[0];
+                if (backgroundVideo) {
+                    formData.append('background_video', backgroundVideo);
+                }
+                
+                const response = await fetch('/create_video', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error);
+                }
+                
+                const data = await response.json();
+                showVideoPreview(data);
+            } catch (error) {
+                showError(`Failed to create video: ${error.message}`);
+            } finally {
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
+            }
+        }
+
+        async function handleResearchVideo(event) {
+            event.preventDefault();
+            
+            const topic = document.getElementById('research-topic').value;
+            const submitButton = event.target.querySelector('button[type="submit"]');
+            const originalButtonText = submitButton.innerHTML;
+            
+            submitButton.disabled = true;
+            submitButton.innerHTML = 'Researching... <div class="loading"></div>';
+            
+            try {
+                const response = await fetch(`/research_video?topic=${encodeURIComponent(topic)}`);
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                while (true) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    
+                    const events = decoder.decode(value).split('\n\n');
+                    for (const event of events) {
+                        if (event.startsWith('data: ')) {
+                            const data = JSON.parse(event.slice(6));
+                            
+                            if (data.status === 'error') {
+                                showError(data.message);
+                                break;
+                            } else if (data.status === 'success') {
+                                showVideoPreview(data);
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                showError(`Research failed: ${error.message}`);
+            } finally {
+                submitButton.disabled = false;
+                submitButton.innerHTML = originalButtonText;
+            }
+        }
+
+        async function runDiagnostics() {
+            const testButton = document.getElementById('test-system');
+            const statusDiv = document.getElementById('test-status');
+            const jsonAudio = document.getElementById('json-audio');
+            const rawAudio = document.getElementById('raw-audio');
+            const jsonStatus = document.getElementById('json-status');
+            const rawStatus = document.getElementById('raw-status');
+            
+            testButton.disabled = true;
+            testButton.innerHTML = 'Testing... <div class="loading"></div>';
+            statusDiv.style.display = 'none';
+            
+            try {
+                // Test JSON endpoint
+                const jsonResponse = await fetch('/test_tts');
+                const jsonData = await jsonResponse.json();
+                
+                if (jsonData.status === 'success') {
+                    jsonStatus.className = 'success-message';
+                    jsonStatus.textContent = 'JSON audio test passed!';
+                    jsonStatus.style.display = 'block';
+                    
+                    // Create audio from base64
+                    const audioBlob = new Blob(
+                        [Uint8Array.from(atob(jsonData.audio), c => c.charCodeAt(0))],
+                        { type: 'audio/wav' }
+                    );
+                    jsonAudio.src = URL.createObjectURL(audioBlob);
+                    jsonAudio.style.display = 'block';
+                } else {
+                    jsonStatus.className = 'error-message';
+                    jsonStatus.textContent = `JSON audio test failed: ${jsonData.message}`;
+                    jsonStatus.style.display = 'block';
+                }
+
+                // Test raw audio endpoint
+                const rawResponse = await fetch('/test_tts_raw');
+                if (rawResponse.ok) {
+                    const audioBlob = await rawResponse.blob();
+                    rawAudio.src = URL.createObjectURL(audioBlob);
+                    rawAudio.style.display = 'block';
+                    
+                    rawStatus.className = 'success-message';
+                    rawStatus.textContent = 'Raw audio test passed!';
+                    rawStatus.style.display = 'block';
+                } else {
+                    rawStatus.className = 'error-message';
+                    rawStatus.textContent = 'Raw audio test failed';
+                    rawStatus.style.display = 'block';
+                }
+
+                // Overall status
+                statusDiv.className = 'success-message';
+                statusDiv.textContent = 'System check completed. Check audio playback below.';
+                statusDiv.style.display = 'block';
+            } catch (error) {
+                statusDiv.className = 'error-message';
+                statusDiv.textContent = `Error running diagnostics: ${error.message}`;
+                statusDiv.style.display = 'block';
+            } finally {
+                testButton.disabled = false;
+                testButton.innerHTML = 'Test System';
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('system-status');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
