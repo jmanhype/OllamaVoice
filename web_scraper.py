@@ -4,17 +4,37 @@ from urllib.parse import urlparse, urljoin
 import asyncio
 import re
 import logging
+from typing import Dict, List, Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class WebScraper:
-    def __init__(self, rate_limit=1):
-        self.rate_limit = rate_limit
-        self.last_request_time = {}
+    """
+    A web scraper for extracting content from web pages with rate limiting.
+
+    Attributes:
+        rate_limit: Minimum seconds between requests to the same domain
+        last_request_time: Dictionary tracking last request time per domain
+    """
+
+    def __init__(self, rate_limit: int = 1) -> None:
+        """
+        Initialize the web scraper.
+
+        Args:
+            rate_limit: Minimum seconds between requests to the same domain (default: 1)
+        """
+        self.rate_limit: int = rate_limit
+        self.last_request_time: Dict[str, float] = {}
         
-    async def respect_rate_limit(self, domain):
-        """Implement rate limiting per domain."""
+    async def respect_rate_limit(self, domain: str) -> None:
+        """
+        Implement rate limiting per domain.
+
+        Args:
+            domain: The domain to apply rate limiting to
+        """
         current_time = asyncio.get_event_loop().time()
         if domain in self.last_request_time:
             time_since_last_request = current_time - self.last_request_time[domain]
@@ -22,11 +42,19 @@ class WebScraper:
                 await asyncio.sleep(self.rate_limit - time_since_last_request)
         self.last_request_time[domain] = current_time
         
-    async def scrape_page(self, url: str) -> dict:
-        """Scrape content from a single webpage."""
+    async def scrape_page(self, url: str) -> Optional[Dict[str, str]]:
+        """
+        Scrape content from a single webpage.
+
+        Args:
+            url: The URL to scrape
+
+        Returns:
+            Dictionary containing extracted content or None if scraping failed
+        """
         domain = urlparse(url).netloc
         await self.respect_rate_limit(domain)
-        
+
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(url, timeout=10.0, follow_redirects=True)
@@ -36,8 +64,17 @@ class WebScraper:
             logger.error(f"Error scraping {url}: {str(e)}")
             return None
             
-    async def extract_content(self, html: str, url: str) -> dict:
-        """Extract and clean content from HTML."""
+    async def extract_content(self, html: str, url: str) -> Dict[str, str]:
+        """
+        Extract and clean content from HTML.
+
+        Args:
+            html: The HTML content to parse
+            url: The source URL
+
+        Returns:
+            Dictionary containing extracted title, description, content, and metadata
+        """
         soup = BeautifulSoup(html, 'html.parser')
         
         # Remove unwanted elements
@@ -76,8 +113,16 @@ class WebScraper:
             "source": urlparse(url).netloc
         }
         
-    async def scrape_multiple(self, urls: list[str]) -> list[dict]:
-        """Scrape multiple pages concurrently."""
+    async def scrape_multiple(self, urls: List[str]) -> List[Dict[str, str]]:
+        """
+        Scrape multiple pages concurrently.
+
+        Args:
+            urls: List of URLs to scrape
+
+        Returns:
+            List of dictionaries containing extracted content from successful scrapes
+        """
         tasks = [self.scrape_page(url) for url in urls]
         results = await asyncio.gather(*tasks)
         return [r for r in results if r is not None]

@@ -37,6 +37,11 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+Note: For development, install testing dependencies:
+```bash
+pip install pytest pytest-asyncio pytest-cov
+```
+
 4. Create necessary directories:
 ```bash
 mkdir -p static/temp static/videos
@@ -61,6 +66,23 @@ uvicorn main:app --reload
    - Generate TTS audio
    - Research topics
    - Create AI-narrated videos
+
+## Testing
+
+Run the test suite:
+```bash
+pytest
+```
+
+Run tests with coverage report:
+```bash
+pytest --cov=. --cov-report=html
+```
+
+Run specific test file:
+```bash
+pytest test_web_scraper.py -v
+```
 
 ## Architecture
 

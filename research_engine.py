@@ -1,15 +1,45 @@
 import logging
-from typing import List, Dict
+from typing import List, Dict, Optional, Callable, Awaitable
 import json
 import asyncio
 
 logger = logging.getLogger(__name__)
 
 class ResearchEngine:
-    def __init__(self, ollama_client):
+    """
+    Research engine for generating educational content using Ollama.
+
+    Attributes:
+        ollama_client: Client for communicating with Ollama API
+    """
+
+    def __init__(self, ollama_client) -> None:
+        """
+        Initialize the research engine.
+
+        Args:
+            ollama_client: The Ollama client instance for API communication
+        """
         self.ollama_client = ollama_client
 
-    async def research_topic(self, topic: str, progress_callback=None) -> str:
+    async def research_topic(
+        self,
+        topic: str,
+        progress_callback: Optional[Callable[[str], None]] = None
+    ) -> str:
+        """
+        Research a topic and generate a video script.
+
+        Args:
+            topic: The topic to research
+            progress_callback: Optional callback function for progress updates
+
+        Returns:
+            Generated video script as a string
+
+        Raises:
+            ValueError: If research or script generation fails
+        """
         try:
             async def send_progress(message: str):
                 if progress_callback:
@@ -33,7 +63,19 @@ class ResearchEngine:
             logger.error(f"Error in research_topic: {str(e)}")
             raise ValueError(f"Research failed: {str(e)}")
 
-    async def _generate_focus_areas(self, topic: str) -> list:
+    async def _generate_focus_areas(self, topic: str) -> List[str]:
+        """
+        Generate focus areas for researching a topic.
+
+        Args:
+            topic: The topic to generate focus areas for
+
+        Returns:
+            List of research focus areas
+
+        Raises:
+            ValueError: If focus area generation fails
+        """
         focus_areas_prompt = f"""Generate 2 specific research focus areas for the topic: {topic}.
 Focus on key aspects that would make an engaging educational video.
 Format as a numbered list. Keep each focus area concise."""
@@ -48,7 +90,16 @@ Format as a numbered list. Keep each focus area concise."""
         
         return focus_areas
 
-    async def _research_focus_area(self, area: str) -> dict:
+    async def _research_focus_area(self, area: str) -> Optional[Dict[str, str]]:
+        """
+        Research a specific focus area.
+
+        Args:
+            area: The focus area to research
+
+        Returns:
+            Dictionary containing research results or None if research fails
+        """
         content_prompt = f"""Generate detailed, factual information about this topic: {area}
 Include:
 1. Key concepts (2-3 points)
@@ -66,7 +117,21 @@ Keep the content concise and engaging."""
             'title': f"Research on {area}"
         }
 
-    async def _research_focus_areas(self, focus_areas: list, send_progress) -> list:
+    async def _research_focus_areas(
+        self,
+        focus_areas: List[str],
+        send_progress: Callable[[str], Awaitable[None]]
+    ) -> List[Dict[str, str]]:
+        """
+        Research multiple focus areas.
+
+        Args:
+            focus_areas: List of focus areas to research
+            send_progress: Async function to send progress updates
+
+        Returns:
+            List of dictionaries containing research results
+        """
         research_data = []
         for i, area in enumerate(focus_areas, 1):
             await send_progress(f"Researching area {i} of {len(focus_areas)}: {area[:50]}...")
@@ -83,7 +148,20 @@ Keep the content concise and engaging."""
 
         return research_data
 
-    async def _generate_final_script(self, topic: str, research_data: list) -> str:
+    async def _generate_final_script(self, topic: str, research_data: List[Dict[str, str]]) -> str:
+        """
+        Generate final video script from research data.
+
+        Args:
+            topic: The research topic
+            research_data: List of research results
+
+        Returns:
+            Generated video script
+
+        Raises:
+            ValueError: If script generation fails
+        """
         await asyncio.sleep(2)  # Rate limiting delay
 
         if research_data:
